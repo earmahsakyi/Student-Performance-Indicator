@@ -6,6 +6,7 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 from dataclasses import dataclass
 
+
 ##All your file paths / settings live in one place
 ##Instead of hardcoding 'artifacts/train.csv' scattered everywhere, you centralize it
 @dataclass
@@ -49,6 +50,3 @@ class DataIngestion:
 
 
 
-if __name__ == '__main__':
-    obj = DataIngestion()
-    obj.initiate_data_ingestion()
