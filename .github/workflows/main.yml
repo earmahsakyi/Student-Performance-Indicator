@@ -1,0 +1,50 @@
+name: Deploy ML App
+
+on:
+  push:
+    branches:
+      - main          # triggers when you push to main branch
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest   # GitHub uses a Linux machine
+
+    steps:
+      # Step 1 - get your code
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Step 2 - login to AWS ECR
+      - name: Login to Amazon ECR
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: eu-north-1
+        run: |
+          aws ecr get-login-password --region us-east-1 | docker login \
+          --username AWS \
+          --password-stdin ${{ secrets.ECR_URI }}
+
+      # Step 3 - build Docker image
+      - name: Build Docker image
+        run: docker build -t studentperformance .
+
+      # Step 4 - tag and push to ECR
+      - name: Push to ECR
+        run: |
+          docker tag studentperformance:latest ${{ secrets.ECR_URI }}:latest
+          docker push ${{ secrets.ECR_URI }}:latest
+
+      # Step 5 - SSH into EC2 and pull latest image
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ec2-user
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            docker pull ${{ secrets.ECR_URI }}:latest
+            docker stop studentperformance || true
+            docker run -d -p 80:5000 \
+            --name studentperformance \
+            ${{ secrets.ECR_URI }}:latest
